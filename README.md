@@ -40,9 +40,12 @@ CentOS: ```sudo yum -y install docker.io```
 2. 启动Docker服务（**已经安装Docker服务并启动的直接调到第 3 步**）
 ```sudo service docker start```
 3. 使用容器启动并初始化MySQL数据库
-```docker run --name sec-mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=secpassword -d mysql:5.7 && docker exec -i sec-mysql sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD"' < curl http://github.com/smallcham/sec-admin/pack/create_db.sql```
+```docker run --name sec-mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=secpassword -d mysql:5.7```
+```wget https://raw.githubusercontent.com/smallcham/sec-admin/master/pack/create_db.sql```
+等待半分钟，mysql启动完毕后执行
+```docker exec -i sec-mysql sh -c 'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD"' < /你下载的目录/create_db.sql```
 
-> 如果你要使用自己现有的数据库可以直接将[create_db.sql](http://github.com/smallcham/sec-admin/pack/create_db.sql)中的SQL执行进行初始化
+> 如果你要使用自己现有的数据库可以直接将[create_db.sql](https://github.com/smallcham/sec-admin/blob/master/pack/create_db.sql)中的SQL执行进行初始化
 
 4. 使用容器启动Redis
 ```docker run --name sec-redis -d redis```
