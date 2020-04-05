@@ -1,43 +1,43 @@
 <template>
   <div>
     <el-row :gutter="12">
-      <el-col :span="6">
+      <el-col :span="8">
         <el-card>
           IP总数
           <el-button type="primary" @click="$router.push('/assets/list')">{{ data.asset }}</el-button>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="8">
         <el-card>
           执行中任务
-          <el-button type="info" @click="$router.push('/task/list/1')">{{ data.running }}</el-button>
+          <el-button type="warning" @click="$router.push('/task/list/1')">{{ data.running }}</el-button>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="8">
         <el-card>
           已发现问题
-          <el-button type="warning" @click="$router.push('/task/list/2')">{{ data.error }}</el-button>
+          <el-button type="danger" @click="$router.push('/task/list/2')">{{ data.error }}</el-button>
         </el-card>
       </el-col>
-      <el-col :span="6">
-        <el-card>
-          未处理问题
-          <el-button type="danger" @click="$router.push('/task/list/2')">{{ data.handle }}</el-button>
-        </el-card>
-      </el-col>
+<!--      <el-col :span="6">-->
+<!--        <el-card>-->
+<!--          未处理问题-->
+<!--          <el-button type="danger" @click="$router.push('/task/list/2')">{{ data.handle }}</el-button>-->
+<!--        </el-card>-->
+<!--      </el-col>-->
     </el-row>
     <div v-if="user.type === 'ROOT'">
       <br/>
-      <div style="text-align: center"><el-button type="primary" round @click="addHostDialogVisible = true"><i class="el-icon-circle-plus-outline"></i> 添加任务执行节点</el-button></div>
+      <div style="text-align: center"><el-button type="warning" @click="addHostDialogVisible = true"><i class="el-icon-circle-plus-outline"></i> 添加任务执行节点</el-button></div>
       <br/>
     </div>
-    <el-tabs type="border-card">
+    <el-tabs>
       <el-tab-pane label="执行节点监控">
         <el-row :gutter="12">
           <el-col :span="6" v-bind:key="host.server" v-for="host in hosts">
-            <el-card shadow="always">
+            <el-card shadow="hover">
               <el-alert
-                effect="dark"
+                shadow="hover"
                 :closable="false"
                 :type="(!host.active && ((new Date() - new Date(parseInt(host.timespan))) / 1000 / 60) < 3 ? 'warning' : ((new Date() - new Date(parseInt(host.timespan))) / 1000 / 60) > 3 ? 'error' : 'success')"
                 :title="host.server"

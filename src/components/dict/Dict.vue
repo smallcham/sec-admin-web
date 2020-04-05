@@ -44,7 +44,6 @@
     </el-table>
     <el-pagination
       style="padding-top: 10px"
-      background
       layout="prev, pager, next"
       @current-change="loadData"
       :current-page.sync="tableData.page"
