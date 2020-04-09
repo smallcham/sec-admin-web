@@ -1,14 +1,24 @@
 <template>
   <div>
     <el-form :inline="true" :model="form" @keyup.enter.native="loadData(1)" class="demo-form-inline">
-      <el-form-item label="IP地址">
-        <el-input v-model="form.ip" placeholder="IP地址"></el-input>
+      <el-form-item label="IP/域名">
+        <el-input v-model="form.ip" placeholder="IP/域名"></el-input>
       </el-form-item>
       <el-form-item label="端口/应用名">
         <el-input v-model="form.port" placeholder="端口/应用名"></el-input>
       </el-form-item>
       <el-form-item label="标签">
         <el-input v-model="form.tags" placeholder="标签"></el-input>
+      </el-form-item>
+      <el-form-item label="CDN">
+          <el-select v-model="form.cdn" allow-create :multiple="false" filterable title="支持输入DNS解析搜索" placeholder="请选择">
+            <el-option
+              v-for="item in cdnOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value">
+            </el-option>
+          </el-select>
       </el-form-item>
       <el-form-item label="机房">
         <el-select v-model="form.region" placeholder="机房">
@@ -25,12 +35,17 @@
     <el-collapse-transition>
       <div v-show="selected.length > 0">
         <el-button-group>
-          <el-button type="success" size="small" @click="addTaskDialogVisible = true; addMode = 0"><i class="el-icon-s-order"></i> 对选中条目添加任务</el-button>
+          <el-button type="success" size="small" @click="addTaskDialogVisible = true; addMode = 0"><i class="el-icon-plus"></i> 对选中条目添加任务</el-button>
           <el-button type="warning" size="small" @click="addTaskDialogVisible = true; addMode = 1"><i class="el-icon-s-order"></i> 对结果集添加任务</el-button>
+        </el-button-group>
+        <el-button-group>
+          <el-button type="danger" size="small" v-loading.fullscreen.lock="loading" @click="handleDelete(0)"><i class="el-icon-close"></i> 删除选中条目</el-button>
+          <el-button type="danger" size="small" v-loading.fullscreen.lock="loading" @click="handleDelete(1)"><i class="el-icon-error"></i> 删除查询结果集</el-button>
         </el-button-group>
       </div>
     </el-collapse-transition>
     <el-table
+      v-loading="loading"
       ref="filterTable"
       @selection-change="handleSelectionChange"
       :data="tableData.items">
@@ -68,6 +83,26 @@
         </template>
       </el-table-column>
       <el-table-column
+        prop="dns"
+        label="DNS分析"
+        filter-placement="bottom-end">
+        <template slot-scope="scope" v-if="scope.row.dns !== null && scope.row.dns !== undefined">
+          <el-alert
+            v-if="scope.row.dns.cdn !== 'unknown'"
+            type="warning"
+            :title="'CDN - (' + scope.row.dns.name + ') - ' + scope.row.dns.cdn"
+            :closable="false" />
+          <el-alert :title="record.target" v-if="record.target !== ''" :type="'info'" v-bind:key="index" v-for="(record, index) in scope.row.dns.records" :closable="false"/>
+        </template>
+      </el-table-column>
+      <el-table-column
+        prop="remark"
+        label="摘要">
+        <template slot-scope="scope">
+          <el-alert :title="r" v-if="r !== ''" :type="index === 0 ? 'success' : 'info'" v-bind:key="index" v-for="(r, index) in scope.row.remark" :closable="false"/>
+        </template>
+      </el-table-column>
+      <el-table-column
         prop="os"
         label="猜测系统"
         filter-placement="bottom-end">
@@ -76,14 +111,6 @@
           <el-tag size="mini" effect="plain" type="warning" v-if="scope.row.os === null || scope.row.os === undefined">扫描中</el-tag>
           <el-tag size="mini" effect="plain" type="info" v-if="scope.row.os !== null && scope.row.os !== undefined && scope.row.os.length === 0">无</el-tag>
           <el-button size="mini" type="warning" plain circle icon="el-icon-refresh" @click="retryOs(scope.$index, scope.row)"></el-button>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作">
-        <template slot-scope="scope">
-          <el-button
-            size="mini"
-            type="danger"
-            @click="handleDelete(scope.$index, scope.row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -126,6 +153,12 @@ export default {
   name: 'Assets',
   data () {
     return {
+      cdnOptions: [
+        { value: 'unknown', label: '排除CDN' },
+        { value: '百度云', label: '百度云' },
+        { value: '腾讯云', label: '腾讯云' },
+        { value: '阿里云', label: '阿里云' }
+      ],
       tableData: [],
       selected: [],
       tasks: [],
@@ -137,7 +170,8 @@ export default {
         ip: '',
         region: '',
         port: '',
-        tags: ''
+        tags: '',
+        cdn: ''
       }
     }
   },
@@ -148,7 +182,7 @@ export default {
   methods: {
     loadData (next) {
       let that = this
-      this.$http.get('/query/ip', { params: { next: next, ip: this.form.ip, region: this.form.region, port: this.form.port, tags: this.form.tags } }).then(res => {
+      this.$http.get('/query/ip', { params: { next: next, ip: this.form.ip, region: this.form.region, port: this.form.port, tags: this.form.tags, cdn: this.form.cdn } }).then(res => {
         that.tableData = res.data.data
       })
     },
@@ -156,18 +190,33 @@ export default {
       this.selected = val
     },
     handleEdit () {},
-    handleDelete (index, row) {
+    handleDelete (mode) {
       let that = this
-      this.$confirm('是否确认删除资产: ' + row.ip, '提示', {
+      if (mode === 0 && this.selected.length === 0) {
+        this.$message.warning('至少选择一个要删除的资产')
+        return
+      }
+      let count = mode === 0 ? this.selected.length : 1
+      let url = mode === 0 ? '/del/ip' : '/del/ips'
+      this.$confirm('是否确认删除资产, 该操作无法撤回', '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        that.$http.post('/del/ip', { 'ip': row.ip }).then(res => {
-          that.$message.success('删除成功')
-          that.tableData.items.splice(index, 1)
-        })
-      }).catch(() => {})
+        that.loading = true
+        for (let i = 0; i < count; i++) {
+          let data = mode === 0 ? {
+            'ip': that.selected[i].ip
+          } : that.form
+          that.$http.post(url, data).then(res => {
+            that.$message.success('删除成功')
+            that.loadData(that.tableData.page)
+            that.loading = false
+          })
+        }
+      }).catch(() => {
+        that.loading = false
+      })
     },
     portRoute (ip, port, row) {
       if (port === '80' || port === '8080') {
