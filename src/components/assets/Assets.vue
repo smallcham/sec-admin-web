@@ -210,8 +210,10 @@ export default {
           } : that.form
           that.$http.post(url, data).then(res => {
             that.$message.success('删除成功')
-            that.loadData(that.tableData.page)
             that.loading = false
+            if (count - 1 === i) {
+              that.loadData(that.tableData.page)
+            }
           })
         }
       }).catch(() => {
