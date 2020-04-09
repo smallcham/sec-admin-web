@@ -135,7 +135,7 @@ docker run -d -p 启动端口:80 --name sec --env HOST=http://部署机器的IP:
 > 例如
 
 ```
-docker run -d -p 8793:80 --name sec --env HOST=http://192.168.0.107:8793 --env DB_URL=root:abcd1234@192.168.0.107:3306/sec --env RDS_URL=0:abcd1234@192.168.0.107:6379 -v ~/sec-script:/var/www/html/sec-admin/static/plugin/usr smallcham/sec:core-0.1 && docker logs -f sec --tail 10
+docker run -d -p 8793:80 --name sec --env HOST=http://192.168.0.107:8793 --env DB_URL=root:abcd1234@192.168.0.107:3306/sec --env RDS_URL=0:abcd1234@192.168.0.107:6379 -v ~/sec-script:/var/www/html/sec-admin/static/plugin/usr smallcham/sec:core-0.2 && docker logs -f sec --tail 10
 ```
 
 
