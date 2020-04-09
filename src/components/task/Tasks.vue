@@ -32,9 +32,13 @@
     <el-collapse-transition>
       <div v-show="selected.length > 0">
         <el-button-group>
-          <el-button type="success" size="small" @click="handleCancelList"><i class="el-icon-s-order"></i> 取消选中任务</el-button>
-          <el-button type="warning" size="small" @click="handleRetryList"><i class="el-icon-s-order"></i> 重新提交选中任务</el-button>
-          <el-button type="danger" size="small" @click="handleDelTask"><i class="el-icon-s-order"></i> 删除选中任务</el-button>
+          <el-button type="info" size="small" @click="handleCancelList"><i class="el-icon-close"></i> 取消选中任务</el-button>
+          <el-button type="info" size="small" @click="handleCancelResult"><i class="el-icon-error"></i> 取消查询结果集</el-button>
+        </el-button-group>
+        <el-button type="warning" size="small" @click="handleRetryList"><i class="el-icon-s-order"></i> 重新提交选中任务</el-button>
+        <el-button-group>
+          <el-button type="danger" size="small" @click="handleDelTask"><i class="el-icon-close"></i> 删除选中任务</el-button>
+          <el-button type="danger" size="small" @click="handleDelTasks"><i class="el-icon-error"></i> 删除查询结果集</el-button>
         </el-button-group>
       </div>
     </el-collapse-transition>
@@ -66,7 +70,7 @@
           <el-tag size="small" type="primary" v-if="scope.row.state === 'RUNNING'">运行中</el-tag>
           <el-tag size="small" type="success" v-if="scope.row.state === 'FINISH'">执行完毕</el-tag>
           <el-tag size="small" type="danger" v-if="scope.row.state === 'FAIL'">执行失败</el-tag>
-          <el-tag size="small" type="info" v-if="scope.row.state === 'STOP'">停止</el-tag>
+          <el-tag size="small" type="info" v-if="scope.row.state === 'CANCEL'">停止</el-tag>
         </template>
       </el-table-column>
       <el-table-column
@@ -179,6 +183,19 @@ export default {
         }
       }).catch(() => {})
     },
+    handleDelTasks () {
+      let that = this
+      this.$confirm('是否确认按查询结果集删除任务(仅可删除 "已完成", "失败", "停止" 状态的任务)', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        that.$http.post('/del/tasks', that.form).then(res => {
+          that.$message.success('任务删除完毕')
+          that.loadData(that.tableData.page)
+        })
+      }).catch(() => {})
+    },
     handleRetryList () {
       let that = this
       this.$confirm('是否确认批量重新提交任务', '提示', {
@@ -220,19 +237,33 @@ export default {
       }).then(() => {
         for (let i = 0; i < that.selected.length; i++) {
           if (that.selected[i].state === 'READY' || that.selected[i].state === 'RUN_ABLE' || that.selected[i].state === 'RUNNING') {
+            let item = that.selected[i]
             that.$http.post('/cancel/task', { 'task_name': that.selected[i].task_name, handle_node: that.selected[i].handle_node, state: that.selected[i].state }).then(res => {
-              if (that.selected[i].state === 'RUNNING') {
+              if (item.state === 'RUNNING') {
                 that.$message.success('取消任务下发完毕, 将通知执行节点取消任务.')
               } else {
                 that.$message.success('取消任务成功.')
               }
-              if (i === that.selected.length - 1) {
+              if (that.selected.length - 1 === i) {
                 that.loadData(that.tableData.page)
               }
             })
           }
         }
-        that.loadData(that.tableData.page)
+      }).catch(() => {})
+    },
+    handleCancelResult () {
+      let that = this
+      this.$confirm('是否取消查询结果集中的所有任务', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        that.$message.warning('取消任务下发中, 任务太多会时间较长, 您可以进行其他操作.')
+        that.$http.post('/cancel/tasks', that.form).then(() => {
+          that.$message.success('取消成功, 运行中的任务将会逐步通知节点取消.')
+          that.loadData(that.tableData.page)
+        })
       }).catch(() => {})
     },
     handleCancel (index, row) {
